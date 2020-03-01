@@ -1,0 +1,79 @@
+#!/bin/bash
+
+# DESCRIPTION
+#
+# Check for VPN connection and notify if not connected
+#
+# This is a simple script to check if my VPN is active.
+# It simply downloads a webpage and checks to see if it contains a certain string.
+#
+# PLEASE NOTE: The script is designed to run continuously. Use the "kill" command or CTRL+C to exit.
+
+
+# DEPENDANCIES (Should all be met by default on modern linux systems)
+#
+# curl, grep, notify-send, nmcli
+
+
+# Written by Jesse the Wind Wanderer. Published under the GNU GPLv3
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You can find a copy of the GNU General Public License
+#    here: <http://www.gnu.org/licenses/>.
+
+
+source ~/.local/share/WW-scripts/check_vpn_is_connected.conf
+
+# Example check_vpn_is_connected.conf
+#
+# check_url='https://www.expressvpn.com/what-is-my-ip'		# This is a url, usually provided by your VPN, that will tell you if you are properly connected.
+# connected_string='Your IP address is secured.'			# The message to display if connected
+# not_connected_string='VPN NOT CONNECTED!'					# The message to display if NOT connected
+# real_location="Your Real Location"						# As displayed by https://freegeoip.app/csv
+# notify_icon="~/scripts/icons/No-ExpressVPN.png"			# The icon to use for the notification
+# notify_command="/usr/bin/notify-send"						# The location of notify-send
+# notify_interval="4"										# The interval in seconds to pause between checks
+# vpn_nmcli_uuid="63d19bee-d23e-424f-a014-3ff198806f44"		# The uuid of the nmcli VPN connection (find it with `nmcli c show`)
+
+while [ true ]
+do
+	# First check that we are connected to the internet. If NOT then Be Silent
+	if ! nmcli networking connectivity check | grep full;
+	then
+		echo "No Network Connection";
+		sleep ${notify_interval};
+	else
+		# check if we're connected to our primary (rounter) VPN
+		if curl --fail --max-time 10 -L ${check_url} | grep "${connected_string}"
+		then 
+			echo "We ARE connected to VPN";
+			# But let's not report this every single minute. So comment out the next line.
+			#${notify_command} "VPS *IS* connected :-)" && ${notify_command} "VPS *IS* connected :-)" 
+			sleep ${notify_interval};
+		else
+			# check if we're connected to our secondary (computer) VPN (freegeoip should NOT report our real_location)
+			if curl --fail --max-time 10 -L https://freegeoip.app/csv | awk -F "," '{print $5}' | grep -v "${real_location}";
+			then
+				echo "We ARE connected a VPN BUT it's the local computer's direct connection not the VPN configured on the router";
+				${notify_command} -i "${notify_icon}" "${not_connected_string}"
+				sleep ${notify_interval};
+			else
+				echo "We are NOT connected to VPN!";
+				${notify_command} -i "${notify_icon}" "${not_connected_string}"
+				echo "Start secondary VPN to protect this computer"
+				nmcli c up ${vpn_nmcli_uuid}
+				sleep ${notify_interval};
+			fi
+		fi
+	fi
+done
+
