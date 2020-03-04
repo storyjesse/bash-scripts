@@ -1,0 +1,84 @@
+#!/usr/bin/bash
+
+# DESCRIPTION
+#
+#
+#
+# Written by Jesse The Wind Wanderer. Published under the GNU GPLv3
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You can find a copy of the GNU General Public License
+#    here: <http://www.gnu.org/licenses/>.
+
+
+# Populate Default Global Variables
+SCRIPTS_PATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+SCRIPTS_NAME="$( basename "${BASH_SOURCE[0]}" )"
+
+# Setup Logging
+logfile=$SCRIPTS_PATH/$SCRIPTS_NAME.log	# This will create the logfile with the same name and in the same directory as the script.
+echo >> $logfile
+date >> $logfile
+{ # This Bracket captures the output for the logfile
+
+# Script Starts Here
+
+# FUNCTIONS
+doFunction()	# Functions have access to GLOBAL VARIABLES or they can be passed to a function in the function call and are then referred to as $1, $2, etc.
+{
+echo "This is a function"
+}
+
+# PASS COMMAND LINE ARGUMENTS
+
+usage="
+NAME
+       geolocation - Connects to freegeoip.app and returns CSV output of the passed IP address or URL
+
+SYNOPSIS
+       geolocation [IP/URL]
+
+DESCRIPTION
+       geolocation is a wrapper script that connects to freegeoip.app and returns CSV output of the passed IP address or URL. If no option is provided geolocation decaults to returning data for the current internet connection.
+"
+
+
+# PROGRAM LOGIC
+
+# JW Future Improvement would be to accept multiple ip/url address
+
+# Check that the input is an IP address:
+if [[ $1 ]];
+then if echo $1 | grep -E "[0-9]?[0-9]?[0-9]\.[0-9]?[0-9]?[0-9]\.[0-9]?[0-9]?[0-9]\.[0-9]?[0-9]?[0-9]" > /dev/null;
+	then
+		IPAddress=$1
+	else
+		IPAddress=$(dig $1 | awk '/ANSWER SECTION:/,/^$/ { if ( $5 ~ /[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}/ ) print $5 };')
+		if echo ${IPAddress} | grep -E "[0-9]?[0-9]?[0-9]\.[0-9]?[0-9]?[0-9]\.[0-9]?[0-9]?[0-9]\.[0-9]?[0-9]?[0-9]" > /dev/null;
+		then 
+			# URL passed
+			echo > /dev/null
+		else
+			# URL failed
+			echo "Failed to lookup $1"
+			exit 1
+		fi
+	fi
+fi
+
+	curl -s --request GET --url "https://freegeoip.app/csv/${IPAddress}" --header 'accept: application/json' --header 'content-type: application/json'
+
+# Script Ends Here
+
+} &> >( tee -a $logfile )	#redirects all stdout and stderr to $logfile Thanks to Lhunath's Explenation Here: http://stackoverflow.com/questions/692000/how-do-i-write-stderr-to-a-file-while-using-tee-with-a-pipe 
+
+
