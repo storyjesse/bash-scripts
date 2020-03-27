@@ -9,8 +9,8 @@ whatismyip.sh	Uses CURL to pull info from ipinfo.io
 
 OPTIONS:
   -b			Brief mode. Just output the data not the fieldnames
-  -q 			Quick mode. Only display ip address
-  -d <field>	Display data only for <field>. Overrides -q
+  -d <field>	Display data only for <field>.
+  -q 			Quick mode. Only display ip address. Overrides -d
 "
 
 # Get Options
@@ -35,14 +35,14 @@ shift $((OPTIND -1))	# Remove Options from $@
 #mkfifo $myfifo
 
 # Build Pipe 2
-if [ ${display} ];
-then
-	pipe2='$1 ~ search { print }'
-elif [ ${quick} ];
+if [ ${quick} ];
 then
 	pipe2='$1 ~ search { print }'
 	display="ip"
 	brief=1
+elif [ ${display} ];
+then
+	pipe2='$1 ~ search { print }'
 else
 	pipe2='{ print }'
 fi

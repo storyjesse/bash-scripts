@@ -60,13 +60,31 @@ do
 			echo "We ARE connected to VPN";
 			# But let's not report this every single minute. So comment out the next line.
 			#${notify_command} "VPS *IS* connected :-)" && ${notify_command} "VPS *IS* connected :-)" 
+			
+			# Check to see if we have the same IP address as last time we checked
+			last_ip_address=$(awk '{ print $2 }' ${VPN_IP_address_log} | grep . | tail -n 1)
+			current_ip_address=$(whatismyip.sh -q)
+			vpn_server="ExpressVPN $(whatismyip.sh -d region) $(whatismyip.sh -d timezone)"
+			if [[ ${last_ip_address} != ${current_ip_address} ]];
+			then echo -e "$(date +%d.%m.%Y)\t${current_ip_address}\t${vpn_server}" >> "${VPN_IP_address_log}"
+			fi
+			
 			notify_interval="4"	# Decrease the interval so that we are notified quickly
 			sleep ${notify_interval};
 		else
 			# check if we're connected to our secondary (computer) VPN (freegeoip should NOT report our real_location)
-			if curl --fail --max-time 10 -L https://freegeoip.app/csv | awk -F "," '{print $5}' | grep -v "${real_location}";
+			if [[ "$(whatismyip.sh -bd region)" != "${real_location}" ]];
 			then
 				echo "We ARE connected a VPN BUT it's the local computer's direct connection not the VPN configured on the router";
+
+				# Check to see if we have the same IP address as last time we checked
+				last_ip_address=$(awk '{ print $2 }' ${VPN_IP_address_log} | grep . | tail -n 1)
+				current_ip_address=$(whatismyip.sh -q)
+				vpn_server="ProtonVPN $(whatismyip.sh -d region) $(whatismyip.sh -d timezone)"
+				if [[ ${last_ip_address} != ${current_ip_address} ]];
+				then echo -e "$(date +%d.%m.%Y)\t${current_ip_address}\t${vpn_server}" >> "${VPN_IP_address_log}"
+				fi
+			
 				${notify_command} -i "${notify_icon}" "${not_connected_string}"
 				sleep ${notify_interval};
 			else
